@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  STUDENT
+  ADMIN
+  COORDINATOR
+  SYSTEM_ADMIN
+}
+
+enum CycleStatus {
+  DRAFT
+  PREFERENCES_OPEN
+  PREFERENCES_CLOSED
+  MATCHING_RUN
+  RESULTS_PUBLISHED
+  ARCHIVED
+}
+
+enum MatchingStatus {
+  PENDING
+  SIMULATION
+  FINAL
+  PUBLISHED
+}
+
+enum TieBreakStrategy {
+  RANDOM_SEED
+  INSTITUTION_PRIORITY
+  ADDITIONAL_SCORE
+  ALPHABETICAL
+}
+
+// ============================================================
+// USERS & AUTH
+// ============================================================
+
+model User {
+  id           String   @id @default(cuid())
+  email        String?  @unique
+  name         String
+  role         UserRole
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  student     Student?
+  coordinator Coordinator?
+  auditLogs   AuditLog[]
+
+  @@index([role])
+}
+
+model Student {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  studentId       String   @unique
+  dateOfBirth     DateTime
+  programme       String
+  year            Int
+  institution     String?
+  overallMark     Decimal? @db.Decimal(5, 2)
+  academicRank    Int?
+  additionalScore Decimal? @db.Decimal(5, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferences Preference[]
+  allocations Allocation[]
+
+  @@index([studentId])
+  @@index([academicRank])
+}
+
+// ============================================================
+// PLACEMENTS & HOSPITALS
+// ============================================================
+
+model Hospital {
+  id           String   @id @default(cuid())
+  name         String
+  address      String?
+  city         String?
+  county       String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  placements   Placement[]
+  coordinators Coordinator[]
+}
+
+model Coordinator {
+  id         String @id @default(cuid())
+  userId     String @unique
+  hospitalId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospital Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId])
+}
+
+model Placement {
+  id             String   @id @default(cuid())
+  hospitalId     String
+  cycleId        String
+  speciality     String
+  capacity       Int
+  startDate      DateTime
+  endDate        DateTime
+  description    String?
+  location       String?
+  supervisorName String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  hospital    Hospital        @relation(fields: [hospitalId], references: [id])
+  cycle       AllocationCycle @relation(fields: [cycleId], references: [id])
+  preferences Preference[]
+  allocations Allocation[]
+
+  @@index([cycleId])
+  @@index([hospitalId])
+  @@index([speciality])
+}
+
+// ============================================================
+// ALLOCATION CYCLES
+// ============================================================
+
+model AllocationCycle {
+  id                   String           @id @default(cuid())
+  name                 String
+  academicYear         String
+  status               CycleStatus      @default(DRAFT)
+  preferencesOpenDate  DateTime?
+  preferencesCloseDate DateTime?
+  tieBreakStrategy     TieBreakStrategy @default(RANDOM_SEED)
+  randomSeed           Int?
+  maxPreferences       Int              @default(10)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  placements   Placement[]
+  preferences  Preference[]
+  matchingRuns MatchingRun[]
+  allocations  Allocation[]
+
+  @@index([status])
+  @@index([academicYear])
+}
+
+// ============================================================
+// PREFERENCES
+// ============================================================
+
+model Preference {
+  id          String   @id @default(cuid())
+  studentId   String
+  placementId String
+  cycleId     String
+  rank        Int
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student   Student         @relation(fields: [studentId], references: [id])
+  placement Placement       @relation(fields: [placementId], references: [id])
+  cycle     AllocationCycle @relation(fields: [cycleId], references: [id])
+
+  @@unique([studentId, placementId, cycleId])
+  @@unique([studentId, rank, cycleId])
+  @@index([cycleId])
+}
+
+// ============================================================
+// MATCHING & RESULTS
+// ============================================================
+
+model MatchingRun {
+  id               String           @id @default(cuid())
+  cycleId          String
+  status           MatchingStatus   @default(PENDING)
+  isSimulation     Boolean          @default(false)
+  randomSeed       Int?
+  tieBreakStrategy TieBreakStrategy
+  startedAt        DateTime         @default(now())
+  completedAt      DateTime?
+  durationMs       Int?
+  totalStudents    Int?
+  totalPlacements  Int?
+  totalAllocated   Int?
+  totalUnallocated Int?
+  configSnapshot   Json?
+  algorithmLog     Json?
+
+  cycle       AllocationCycle @relation(fields: [cycleId], references: [id])
+  allocations Allocation[]
+
+  @@index([cycleId])
+  @@index([status])
+}
+
+model Allocation {
+  id             String   @id @default(cuid())
+  studentId      String
+  placementId    String
+  cycleId        String
+  matchingRunId  String
+  preferenceRank Int?
+  createdAt      DateTime @default(now())
+
+  student     Student         @relation(fields: [studentId], references: [id])
+  placement   Placement       @relation(fields: [placementId], references: [id])
+  cycle       AllocationCycle @relation(fields: [cycleId], references: [id])
+  matchingRun MatchingRun     @relation(fields: [matchingRunId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, cycleId, matchingRunId])
+  @@index([cycleId])
+  @@index([matchingRunId])
+  @@index([placementId])
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId])
+}
