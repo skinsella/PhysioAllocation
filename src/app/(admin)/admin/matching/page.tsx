@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { MatchingPanel } from "./matching-panel";
 
+export const dynamic = "force-dynamic";
+
 export default async function MatchingPage() {
   const cycles = await prisma.allocationCycle.findMany({
     where: {

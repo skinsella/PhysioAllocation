@@ -14,6 +14,7 @@ function parseDatabaseUrl(url: string) {
     database: parsed.pathname.slice(1),
     user: parsed.username || undefined,
     password: parsed.password || undefined,
+    ssl: parsed.searchParams.get("sslmode") === "require" ? true : undefined,
   };
 }
 
@@ -23,6 +24,12 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Lazy initialization — avoid connecting at import/build time
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    if (!globalForPrisma.prisma) {
+      globalForPrisma.prisma = createPrismaClient();
+    }
+    return Reflect.get(globalForPrisma.prisma, prop);
+  },
+});

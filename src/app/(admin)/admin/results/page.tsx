@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { PublishButton } from "./publish-button";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminResultsPage() {
   // Find cycles that have had matching run
   const cycles = await prisma.allocationCycle.findMany({

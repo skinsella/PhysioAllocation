@@ -116,7 +116,7 @@ export async function POST(req: Request) {
         randomSeed: cycle.randomSeed,
         maxPreferences: cycle.maxPreferences,
       },
-      algorithmLog: result.log,
+      algorithmLog: JSON.parse(JSON.stringify(result.log)),
     },
   });
 

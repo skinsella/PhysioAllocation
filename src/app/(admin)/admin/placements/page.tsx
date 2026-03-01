@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPlacementsPage() {
   const placements = await prisma.placement.findMany({
     where: { active: true },

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { CreateCycleButton } from "./create-cycle-button";
 
+export const dynamic = "force-dynamic";
+
 const statusLabels: Record<string, { label: string; color: string }> = {
   DRAFT: { label: "Draft", color: "bg-gray-100 text-gray-700" },
   PREFERENCES_OPEN: { label: "Preferences Open", color: "bg-green-100 text-green-700" },

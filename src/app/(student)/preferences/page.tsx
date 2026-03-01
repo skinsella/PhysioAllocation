@@ -6,6 +6,8 @@ import {
   type PlacementItem,
 } from "@/components/preferences/preference-ranker";
 
+export const dynamic = "force-dynamic";
+
 export default async function PreferencesPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "STUDENT") {

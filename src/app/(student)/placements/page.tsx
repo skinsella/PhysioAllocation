@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 
+export const dynamic = "force-dynamic";
+
 export default async function PlacementsPage() {
   const activeCycle = await prisma.allocationCycle.findFirst({
     where: {

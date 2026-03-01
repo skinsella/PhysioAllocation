@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
 
+export const dynamic = "force-dynamic";
+
 export default async function StudentResultsPage() {
   const session = await auth();
   if (!session?.user || session.user.role !== "STUDENT") {
